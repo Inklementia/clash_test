@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class Player : MonoBehaviour
@@ -8,20 +9,22 @@ public class Player : MonoBehaviour
     [SerializeField] private float speed = 1;
     private Transform _target;
     private Rigidbody _rb;
-    private bool _isDestroyed;
+  
 
-    private void Awake()
+    private void Start()
     {
-        _target = FindTarget();
+        EventManager.Instance.deathEvent.Invoke();
         _rb = GetComponent<Rigidbody>();
     }
 
-    private void Update()
+    private void OnEnable()
     {
-        if (_isDestroyed)
-        {
-            _target = FindTarget();
-        }
+        EventManager.Instance.deathEvent += OnDestroyEnemy;
+    }
+
+    private void OnDisable()
+    {
+        EventManager.Instance.deathEvent -= OnDestroyEnemy;
     }
 
     private void FixedUpdate()
@@ -37,33 +40,33 @@ public class Player : MonoBehaviour
     {
         if (other.collider.CompareTag("Enemy"))
         {
-            //other.collider.gameObject.tag = "Untagged"; 
             other.gameObject.SetActive(false);
+        
+            EventManager.Instance.deathEvent.Invoke();
         }
-        _isDestroyed = true;
     }
-
-    private Transform FindTarget()
+        private Transform FindTarget()
     {
-        var candidates = GameObject.FindGameObjectsWithTag("Enemy");
-        var minDistance = Mathf.Infinity;
-        Transform closest;
+        var distanceToClosestEnemy = Mathf.Infinity;
+        Transform closestEnemy = null;
+        var allEnemies = FindObjectsOfType<Enemy>();
 
-        if (candidates.Length == 0)
-            return null;
-
-        closest = candidates[0].transform;
-        for (var i = 1; i < candidates.Length; i++)
+        foreach (var currentEnemy in allEnemies)
         {
-            var distance = (candidates[i].transform.position - transform.position).sqrMagnitude;
-
-            if (distance < minDistance)
+            var distanceToEnemy = (currentEnemy.transform.position - transform.position).sqrMagnitude;
+            if (distanceToEnemy < distanceToClosestEnemy)
             {
-                closest = candidates[i].transform;
-                minDistance = distance;
+                distanceToClosestEnemy = distanceToEnemy;
+                closestEnemy = currentEnemy.transform;
             }
         }
 
-        return closest;
+        return closestEnemy;
     }
+
+    void OnDestroyEnemy()
+    {
+        _target = FindTarget();
+    }
+
 }
